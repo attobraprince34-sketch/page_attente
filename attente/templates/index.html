@@ -1,0 +1,116 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="stylesheet" href="{% static 'dist/output.css' %}">
+<title>PyCon CI 2027 — Bientôt disponible</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ci-orange:#FF7A1A;
+    --ci-orange-dark:#E2650A;
+    --ci-green:#0B8A3D;
+    --ci-purple:#6C3FA8;
+    --ci-black:#12110F;
+    --ci-cream:#FFFBF5;
+  }
+  body{
+    font-family:'Inter', sans-serif;
+    background-color: var(--ci-cream);
+    /* AJOUT : quadrillage fin (lignes horizontales + verticales) */
+    background-image:
+      linear-gradient(to right, rgba(18,17,15,0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(18,17,15,0.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .font-display{ font-family:'Sora', sans-serif; }
+  .font-mono{ font-family:'JetBrains Mono', monospace; }
+
+  /* Formes organiques : border-radius asymétrique (horizontal / vertical) */
+
+
+  .btn-countdown{
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .btn-countdown:hover{
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px -6px rgba(255,122,26,0.55);
+  }
+
+  a:focus-visible, button:focus-visible{
+    outline: 3px solid var(--ci-purple);
+    outline-offset: 2px;
+  }
+</style>
+</head>
+<!-- 1. Le body utilise flexbox pour centrer verticalement et horizontalement son contenu unique (main) -->
+<body class="text-[var(--ci-black)] flex min-h-screen items-center justify-center p-4">
+
+<!-- HERO -->
+<!-- 2. Le conteneur principal est maintenant parfaitement isolé au centre de l'écran -->
+<main class="max-w-md w-full">
+
+  <!-- LEFT -->
+  <div class="text-center">
+    
+    <h1 class=" font-bold text-[42px]  sm:text-5xl sm:leading-[1.03] mt-4 tracking-tight">
+     Site en construction bientôt disponible
+    </h1>
+    <p class="mt-2 text-gray-600">Notre site sera disponible le 1er Septembre</p>
+    
+    <!-- COUNTDOWN BUTTON -->
+    <div class="mt-10">
+      <button id="countdown-btn" data-target="2027-03-20T09:00:00" aria-live="polite"
+        class="btn-countdown inline-flex items-center gap-4 rounded-lg pl-6 pr-4 py-3 text-white shadow-lg"
+        style="background:linear-gradient(135deg, var(--ci-orange), var(--ci-orange-dark));">
+        <span class="text-left">
+          <span class="block font-mono text-[11px] uppercase tracking-wider text-white/80">Ouverture des inscriptions dans</span>
+          <span id="affichage-rebours" class="block mt-2 font-display font-bold text-lg md:text-xl tabular-nums">-- j -- h -- m -- s</span>
+        </span>
+      </button>
+    </div>
+
+  </div>
+
+  <form action="" method="post" class="flex-col text-center gap-3 mt-5">
+    {% csrf_token %}
+    <input type="email" name="email" required placeholder="votre@email.com" class="max-w-md border border-gray-400 rounded h-10 p-2 focus:outline-none ">
+    <button class=" rounded  px-4 py-2 shadow bg-green-300" type="submit">Me prevenir</button>
+  </form>
+
+
+</main>
+
+<script>
+        // 1. Récupération de la date ISO injectée par Django
+        const dateFin = new Date("{{ date_fin_iso }}").getTime();
+
+        // 2. Mise à jour du compteur toutes les 1000 millisecondes (1 seconde)
+        const horloge = setInterval(function() {
+            const maintenant = new Date().getTime();
+            const ecart = dateFin - maintenant;
+
+            // Calcul mathématique du temps restant
+            const jours = Math.floor(ecart / (1000 * 60 * 60 * 24));
+            const heures = Math.floor((ecart % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((ecart % (1000 * 60 * 60)) / (1000 * 60));
+            const secondes = Math.floor((ecart % (1000 * 60)) / 1000);
+
+            // Affichage des données
+            document.getElementById("affichage-rebours").innerHTML = 
+                jours + "j " + heures + "h " + minutes + "m " + secondes + "s";
+
+            // Si le temps est écoulé
+            if (ecart < 0) {
+                clearInterval(horloge);
+                document.getElementById("affichage-rebours").innerHTML = "Les inscriptions sont ouvertes ! 🎉";
+            }
+        }, 1000);
+    </script>
+
+</body>
+</html>
