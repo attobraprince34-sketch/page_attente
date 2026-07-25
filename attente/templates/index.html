@@ -81,7 +81,11 @@
     <input type="email" name="email" required placeholder="votre@email.com" class="max-w-md border border-gray-400 rounded h-10 p-2 focus:outline-none ">
     <button class=" rounded  px-4 py-2 shadow bg-green-300" type="submit">Me prevenir</button>
   </form>
-
+  {% if messages %}
+  {% for message in messages %}
+    <p>{{ message }}</p>
+  {% endfor %}
+  {% endif %}
 
 </main>
 

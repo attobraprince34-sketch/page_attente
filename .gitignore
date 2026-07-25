@@ -1,0 +1,39 @@
+# --- Données sensibles (clé de chiffrement, emails collectés, PDF) ---
+data_emails/
+
+# --- Environnement virtuel Python ---
+.venv/
+venv/
+env/
+.attente/
+
+# --- Fichiers Python compilés ---
+__pycache__/
+*.pyc
+*.pyo
+
+# --- Base de données locale ---
+db.sqlite3
+db.sqlite3-journal
+
+# --- Django ---
+staticfiles/
+media/
+*.log
+
+# --- Node / frontend ---
+node_modules/
+npm-debug.log*
+
+# --- Secrets / configuration locale ---
+.env
+*.key
+
+# --- Éditeurs / IDE ---
+.vscode/
+.idea/
+*.swp
+
+# --- Système ---
+.DS_Store
+Thumbs.db
