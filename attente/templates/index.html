@@ -9,6 +9,8 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+<script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
 <style>
   :root{
     --ci-orange:#FF7A1A;
@@ -45,6 +47,20 @@
     outline: 3px solid var(--ci-purple);
     outline-offset: 2px;
   }
+
+  /* Popups messages */
+  @keyframes toast-in{
+    from{ opacity:0; transform: translateX(24px); }
+    to{ opacity:1; transform: translateX(0); }
+  }
+  .msg-toast{
+    animation: toast-in .25s ease-out;
+    transition: opacity .25s ease, transform .25s ease;
+  }
+  .msg-toast.msg-hide{
+    opacity:0;
+    transform: translateX(24px);
+  }
 </style>
 </head>
 <!-- 1. Le body utilise flexbox pour centrer verticalement et horizontalement son contenu unique (main) -->
@@ -58,7 +74,7 @@
   <div class="text-center">
     
     <h1 class=" font-bold text-[42px]  sm:text-5xl sm:leading-[1.03] mt-4 tracking-tight">
-     Site en construction bientôt disponible
+     Site en construction bientôt disponible <span class="animate-pulse">!</span>
     </h1>
     <p class="mt-2 text-gray-600">Notre site sera disponible le 1er Septembre</p>
     
@@ -76,15 +92,75 @@
 
   </div>
 
-  <form action="" method="post" class="flex-col text-center gap-3 mt-5">
-    {% csrf_token %}
-    <input type="email" name="email" required placeholder="votre@email.com" class="max-w-md border border-gray-400 rounded h-10 p-2 focus:outline-none ">
-    <button class=" rounded  px-4 py-2 shadow bg-green-300" type="submit">Me prevenir</button>
-  </form>
+<form action="" method="post" class="flex items-center justify-center gap-2 mt-8 w-full">
+  {% csrf_token %}
+
+  <input
+    type="email"
+    name="email"
+    required
+    placeholder="votre@email.com"
+    class="flex-1 max-w-[220px] h-11 px-4 rounded-lg border border-gray-300 bg-white text-sm
+           placeholder:text-gray-400
+           focus:outline-none focus:ring-2 focus:ring-offset-1"
+    style="--tw-ring-color: var(--ci-purple);"
+  >
+
+  <button
+    type="submit"
+    class="h-11 px-5 rounded-lg bg-green-300 font-display font-semibold text-sm text-[var(--ci-black)]
+           shadow-md whitespace-nowrap transition-all duration-150
+           hover:bg-green-400 hover:shadow-lg hover:-translate-y-0.5
+           active:translate-y-0 active:shadow-md"
+  >
+    Me prévenir
+  </button>
+
+</form>
+
+  <!-- POPUPS MESSAGES -->
   {% if messages %}
-  {% for message in messages %}
-    <p>{{ message }}</p>
-  {% endfor %}
+  <div id="messages-stack" class="fixed top-4 right-4 z-50 flex flex-col gap-3 w-[calc(100%-2rem)] max-w-sm">
+    {% for message in messages %}
+      {% if message.tags == 'error' or message.tags == 'danger' %}
+        {% with accent='#DC2626' bg='#FEF2F2' icon='alert-circle' titre='Alerte' %}
+        <div class="msg-toast flex items-start gap-3 rounded-xl shadow-lg border-l-4 p-4"
+             style="background:{{ bg }}; border-color:{{ accent }};">
+          <ion-icon name="{{ icon }}" style="color:{{ accent }}; font-size:22px; flex-shrink:0;"></ion-icon>
+          <div class="flex-1">
+            <p class="font-display font-bold text-sm" style="color:{{ accent }};">{{ titre }}</p>
+            <p class="text-sm text-gray-700 mt-0.5">{{ message }}</p>
+          </div>
+          <button type="button" class="msg-close text-gray-400 hover:text-gray-700 flex-shrink-0" aria-label="Fermer"><ion-icon name="close-circle" style="font-size:20px;"></ion-icon></button>
+        </div>
+        {% endwith %}
+      {% elif message.tags == 'success' %}
+        {% with accent='var(--ci-green)' bg='#F0FBF4' icon='checkmark-circle' titre='Succès' %}
+        <div class="msg-toast flex items-start gap-3 rounded-xl shadow-lg border-l-4 p-4"
+             style="background:{{ bg }}; border-color:{{ accent }};">
+          <ion-icon name="{{ icon }}" style="color:{{ accent }}; font-size:22px; flex-shrink:0;"></ion-icon>
+          <div class="flex-1">
+            <p class="font-display font-bold text-sm" style="color:{{ accent }};">{{ titre }}</p>
+            <p class="text-sm text-gray-700 mt-0.5">{{ message }}</p>
+          </div>
+          <button type="button" class="msg-close text-gray-400 hover:text-gray-700 flex-shrink-0" aria-label="Fermer"><ion-icon name="close-circle" style="font-size:20px;"></ion-icon></button>
+        </div>
+        {% endwith %}
+      {% else %}
+        {% with accent='#D69E00' bg='#FFFBEB' icon='information-circle' titre='Information' %}
+        <div class="msg-toast flex items-start gap-3 rounded-xl shadow-lg border-l-4 p-4"
+             style="background:{{ bg }}; border-color:{{ accent }};">
+          <ion-icon name="{{ icon }}" style="color:{{ accent }}; font-size:22px; flex-shrink:0;"></ion-icon>
+          <div class="flex-1">
+            <p class="font-display font-bold text-sm" style="color:{{ accent }};">{{ titre }}</p>
+            <p class="text-sm text-gray-700 mt-0.5">{{ message }}</p>
+          </div>
+          <button type="button" class="msg-close text-gray-400 hover:text-gray-700 flex-shrink-0" aria-label="Fermer"><ion-icon name="close-circle" style="font-size:20px;"></ion-icon></button>
+        </div>
+        {% endwith %}
+      {% endif %}
+    {% endfor %}
+  </div>
   {% endif %}
 
 </main>
@@ -105,8 +181,31 @@
             const secondes = Math.floor((ecart % (1000 * 60)) / 1000);
 
             // Affichage des données
-            document.getElementById("affichage-rebours").innerHTML = 
-                jours + "j " + heures + "h " + minutes + "m " + secondes + "s";
+document.getElementById("affichage-rebours").innerHTML = `
+  <span class="inline-flex items-center gap-x-2">
+
+    <span class="flex gap-1 items-center bg-white/15 rounded-lg px-2.5 py-1.5">
+      <span class="font-display text-lg font-extrabold text-white tabular-nums leading-none">${String(jours).padStart(2, "0")}</span>
+      <span class="font-mono text-[9px] uppercase tracking-wider text-white/90 mt-0.5">j</span>
+    </span>
+
+    <span class="flex gap-1 items-center bg-white/15 rounded-lg px-2.5 py-1.5">
+      <span class="font-display text-lg font-extrabold text-white tabular-nums leading-none">${String(heures).padStart(2, "0")}</span>
+      <span class="font-mono text-[9px] uppercase tracking-wider text-white/90 mt-0.5">h</span>
+    </span>
+
+    <span class="flex gap-1 items-center bg-white/15 rounded-lg px-2.5 py-1.5">
+      <span class="font-display text-lg font-extrabold text-white tabular-nums leading-none">${String(minutes).padStart(2, "0")}</span>
+      <span class="font-mono text-[9px] uppercase tracking-wider text-white/90 mt-0.5">m</span>
+    </span>
+
+    <span class="flex gap-1 items-center bg-white/15 rounded-lg px-2.5 py-1.5">
+      <span class="font-display text-lg font-extrabold text-white tabular-nums leading-none">${String(secondes).padStart(2, "0")}</span>
+      <span class="font-mono text-[9px] uppercase tracking-wider text-white/90 mt-0.5">s</span>
+    </span>
+
+  </span>
+`;
 
             // Si le temps est écoulé
             if (ecart < 0) {
@@ -114,6 +213,20 @@
                 document.getElementById("affichage-rebours").innerHTML = "Les inscriptions sont ouvertes ! 🎉";
             }
         }, 1000);
+
+        // Popups messages : fermeture au clic + auto-disparition après 6s
+        (function () {
+          function fermer(toast) {
+            toast.classList.add("msg-hide");
+            setTimeout(() => toast.remove(), 250);
+          }
+
+          document.querySelectorAll(".msg-toast").forEach(function (toast) {
+            const btn = toast.querySelector(".msg-close");
+            if (btn) btn.addEventListener("click", () => fermer(toast));
+            setTimeout(() => fermer(toast), 6000);
+          });
+        })();
     </script>
 
 </body>
