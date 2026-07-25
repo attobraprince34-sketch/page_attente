@@ -31,7 +31,7 @@ FICHIER_HASHES = DOSSIER / "emails_hashes.txt"
 FICHIER_PDF = DOSSIER / "emails_finaux.pdf"
 
 # Doit correspondre à la date affichée dans la vue (date_fin_iso)
-DATE_CIBLE = datetime(2026, 7, 25, 2, 56, 00)
+DATE_CIBLE = datetime(2026, 8, 31, 23, 59, 59)
 
 REGEX_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
