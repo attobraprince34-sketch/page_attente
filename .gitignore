@@ -27,6 +27,7 @@ npm-debug.log*
 
 # --- Secrets / configuration locale ---
 .env
+.env.local
 *.key
 
 # --- Éditeurs / IDE ---

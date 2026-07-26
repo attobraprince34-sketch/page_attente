@@ -2,15 +2,14 @@
 Logique de collecte d'emails chiffrés — à importer dans les vues Django.
 Dépendances : pip install cryptography reportlab
 """
-
 import hashlib
 import logging
 import re
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
-
 from django.conf import settings
+from django.core.mail import EmailMessage
 from cryptography.fernet import Fernet, InvalidToken
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
@@ -29,9 +28,13 @@ FICHIER_CLE = DOSSIER / "cle_secrete.key"
 FICHIER_EMAILS = DOSSIER / "emails_chiffres.txt"
 FICHIER_HASHES = DOSSIER / "emails_hashes.txt"
 FICHIER_PDF = DOSSIER / "emails_finaux.pdf"
+FICHIER_MARQUEUR_ENVOI = DOSSIER / "dernier_envoi.marqueur"  # évite les envois en double
 
 # Doit correspondre à la date affichée dans la vue (date_fin_iso)
 DATE_CIBLE = datetime(2026, 8, 31, 23, 59, 59)
+
+# Adresse qui recevra le PDF final par email
+EMAIL_DESTINATAIRE = "diarrassoubamohamedaliou@gmail.com"
 
 REGEX_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -126,13 +129,50 @@ def lire_emails_dechiffres() -> list[str]:
     return resultats
 
 
+def envoyer_pdf_par_email() -> bool:
+    """
+    Envoie le PDF final par email à EMAIL_DESTINATAIRE, en pièce jointe.
+    Renvoie True si l'envoi a réussi, False sinon.
+    """
+    if not FICHIER_PDF.exists():
+        logger.warning("Envoi impossible : le PDF n'existe pas encore.")
+        return False
+
+    try:
+        message = EmailMessage(
+            subject="PyCon Côte d'Ivoire 2027 — Liste finale des emails collectés",
+            body="Le compte à rebours est terminé. Vous trouverez en pièce jointe la liste des emails collectés.",
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[EMAIL_DESTINATAIRE],
+        )
+        message.attach_file(str(FICHIER_PDF))
+        message.send(fail_silently=False)
+        logger.info("PDF envoyé par email à %s", EMAIL_DESTINATAIRE)
+        return True
+    except Exception as e:
+        logger.error("Échec de l'envoi du PDF par email : %s", e)
+        return False
+
+
 def generer_pdf() -> None:
-    """Régénère le PDF à partir de l'état actuel des emails collectés.
-    Écrase le PDF précédent s'il existe déjà (pour inclure les nouveaux
-    emails ajoutés depuis la dernière génération)."""
+    """Régénère le PDF à partir de l'état actuel des emails collectés, puis
+    l'envoie automatiquement par email — mais une seule fois par nombre
+    d'emails collecté (pas de renvoi si rien n'a changé depuis le dernier
+    envoi)."""
     emails = lire_emails_dechiffres()
     if not emails:
         logger.info("Aucun email collecté, rien à générer.")
+        return
+
+    # Évite de renvoyer le même email en boucle à chaque visite de page :
+    # on ne régénère + renvoie que si le nombre d'emails a changé depuis
+    # le dernier envoi réussi.
+    dernier_total_envoye = None
+    if FICHIER_MARQUEUR_ENVOI.exists():
+        dernier_total_envoye = FICHIER_MARQUEUR_ENVOI.read_text(encoding="utf-8").strip()
+
+    if dernier_total_envoye == str(len(emails)):
+        logger.info("PDF déjà à jour et déjà envoyé (%d emails), rien à refaire.", len(emails))
         return
 
     doc = SimpleDocTemplate(str(FICHIER_PDF), pagesize=A4)
@@ -150,3 +190,6 @@ def generer_pdf() -> None:
 
     doc.build(contenu)
     logger.info("PDF généré : %s (%d emails)", FICHIER_PDF, len(emails))
+
+    if envoyer_pdf_par_email():
+        FICHIER_MARQUEUR_ENVOI.write_text(str(len(emails)), encoding="utf-8")
