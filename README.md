@@ -1,147 +1,125 @@
-# Page d'attente
+# Page d'attente PyCon CI 2027
 
-Ce projet est une page de lancement moderne construite avec Django pour présenter un site ou un événement avant sa mise en ligne. Elle affiche un compteur de temps restant et un formulaire d'inscription par e-mail, avec une collecte d'emails chiffrée et un export PDF automatique une fois le compte à rebours terminé.
+Projet Django minimal pour une page d'attente avec compteur, collecte d'emails chiffrée et génération de rapport PDF.
 
-## Fonctionnalités
+## Présentation
 
-- Page d'accueil responsive et élégante
-- Compte à rebours dynamique
-- Formulaire d'inscription par email
-- Collecte d'emails **chiffrée** (chiffrement réversible, aucun email stocké en clair sur le disque)
-- Détection automatique des doublons (via hash SHA-256, sans jamais déchiffrer)
-- Téléchargement du PDF réservé aux comptes admin (`pour télécharger d'abord faire python manage.py migrate ensuite on vas crée un superuser et partir sur cet url 'http://127.0.0.1:8000/telecharger-pdf/'`)
-- Génération automatique d'un **rapport PDF** une fois le compte à rebours terminé et le téléchargement éfectuer
-- Interface stylée avec Tailwind CSS
-- Base Django prête à exécuter
+Cette application propose :
 
-## Technologies utilisées
+- une page d'accueil responsive
+- un compteur de compte à rebours dynamique
+- un formulaire d'inscription par email
+- une collecte d'emails chiffrée et immuable
+- une déduplication par hash SHA-256
+- un téléchargement PDF protégé pour les administrateurs
 
-- Python
-- Django
+## Principales fonctionnalités
+
+- Validation d'email côté serveur
+- Détection des doublons sans stocker d'email en clair
+- Chiffrement des emails avec `cryptography.Fernet`
+- Stockage sécurisé des emails chiffrés et des hashes dans `data_emails/`
+- Génération de PDF via `reportlab`
+- Route admin sécurisée : `/telecharger-pdf/`
+
+## Technologies
+
+- Python 3
+- Django 6
 - SQLite
 - Tailwind CSS
-- HTML/CSS/JavaScript
-- `cryptography` (chiffrement des emails)
-- `reportlab` (génération du PDF)
+- JavaScript
+- `cryptography`
+- `reportlab`
 
 ## Prérequis
 
-Assurez-vous d'avoir installé :
-
-- Python 3.10 ou plus
+- Python 3.10+ ou version compatible
 - pip
 - Node.js et npm
 
 ## Installation
 
-1. Cloner le projet :
-
 ```bash
 git clone <url-du-projet>
 cd page_attente
-```
-
-2. Créer un environnement virtuel :
-
-```bash
 python -m venv .venv
-```
-
-3. Activer l'environnement virtuel :
-
-Sur Windows :
-
-```bash
 .venv\Scripts\activate
-```
-
-Sur Linux/macOS :
-
-```bash
-source .venv/bin/activate
-```
-
-4. Installer les dépendances Python :
-
-```bash
 pip install django cryptography reportlab
-```
-
-5. Installer les dépendances JavaScript :
-
-```bash
 npm install
 ```
 
-## Lancer le projet
-
-1. Appliquer les migrations :
+## Exécution
 
 ```bash
 python manage.py migrate
-```
-
-2. Créer un superuser (nécessaire pour accéder au téléchargement du PDF) :
-
-```bash
 python manage.py createsuperuser
-```
-
-3. Démarrer le serveur Django :
-
-```bash
 python manage.py runserver
 ```
 
-4. Ouvrir l'application dans votre navigateur :
+Ouvrir ensuite :
 
 ```text
 http://127.0.0.1:8000/
 ```
 
+## Accès administrateur PDF
+
+La génération et le téléchargement du PDF sont réservés au staff Django.
+
+- URL : `http://127.0.0.1:8000/telecharger-pdf/`
+- Accessible uniquement après connexion d'un superuser/staff
+- Le PDF est régénéré automatiquement avant chaque téléchargement si le compte à rebours est terminé
+
 ## Structure du projet
 
 ```text
 page_attente/
-├── attente/              # Application Django (vues, urls, logique email)
-├── config/               # Configuration du projet
-├── static/               # Fichiers statiques CSS/JS
-├── templates/            # Templates principaux
-├── data_emails/          # Données de collecte (généré automatiquement, NE PAS versionner)
-│   ├── cle_secrete.key       # Clé de chiffrement — à protéger absolument
-│   ├── emails_chiffres.txt   # Emails chiffrés, un par ligne
-│   ├── emails_hashes.txt     # Empreintes SHA-256 (déduplication)
-│   └── emails_finaux.pdf     # Rapport final (généré après le compte à rebours et le téléchargement)
-├── manage.py             # Point d'entrée Django
-├── package.json          # Dépendances frontend
-└── db.sqlite3            # Base de données locale
+├── attente/
+│   ├── emails_utils.py      # chiffrement, déduplication, PDF
+│   ├── templates/index.html # page d'accueil
+│   ├── urls.py              # routes de l'application
+│   └── views.py             # contrôleurs et logique de réponse
+├── config/
+│   ├── settings.py
+│   └── urls.py
+├── data_emails/             # stockage des clés, emails chiffrés et PDF
+├── static/
+├── db.sqlite3
+├── manage.py
+└── package.json
 ```
 
-## Fonctionnement de la collecte d'emails
+## Comment fonctionne la collecte d'emails
 
-1. Chaque email soumis via le formulaire est validé (format), puis vérifié pour éviter les doublons (comparaison de hash SHA-256, sans jamais déchiffrer les emails existants).
-2. L'email est ensuite chiffré (chiffrement symétrique réversible) avant d'être écrit dans `emails_chiffres.txt`. Le fichier texte ne contient donc jamais d'email lisible.
-3. La clé de chiffrement (`cle_secrete.key`) est générée automatiquement au premier email collecté, et réutilisée ensuite. **Sans cette clé, les emails sont définitivement illisibles.**
-4. Une fois la date cible du compte à rebours atteinte, le PDF final (`emails_finaux.pdf`) est généré à partir des emails déchiffrés.
-5. Un administrateur connecté peut télécharger ce PDF à jour via la route `'http://127.0.0.1:8000/telecharger-pdf/'` (protégée, inaccessible aux visiteurs non-admin).
+1. L'utilisateur soumet un email via le formulaire.
+2. Le backend valide le format et normalise l'email.
+3. Le hash SHA-256 est généré et comparé aux hashes existants.
+4. Si l'email est nouveau, il est chiffré et sauvegardé.
+5. Les hash sont stockés pour empêcher les doublons.
+6. Lorsque la date cible est dépassée, le PDF peut être régénéré avec tous les emails collectés.
+
+## Fichiers importants
+
+- `attente/emails_utils.py` : logique de chiffrement, validation, PDF
+- `attente/views.py` : route de collecte et route de téléchargement PDF
+- `attente/urls.py` : routes de l'application
+- `attente/templates/index.html` : interface utilisateur
+- `config/settings.py` : configuration Django
+- `data_emails/` : stockage sécurisé des données
 
 ## Personnalisation
 
-Vous pouvez modifier :
+- Modifier `DATE_CIBLE` dans `attente/emails_utils.py` pour définir la date de fin du compte à rebours.
+- Personnaliser le contenu et le style dans `attente/templates/index.html`.
+- Ajuster le CSS Tailwind dans `static/`.
 
-- La date du compte à rebours dans `attente/emails_utils.py` (variable `DATE_CIBLE`) — doit correspondre à la date affichée côté template
-- Le contenu du texte dans le template
-- Les styles Tailwind dans les fichiers statiques
+## Sécurité
 
-## Sécurité — points d'attention
-
-- Le dossier `data_emails/` (clé de chiffrement, emails, hashes, PDF) contient des données personnelles et **ne doit jamais être versionné dans Git**. :
-  ```text
-  data_emails/
-  ```
-- La route `'http://127.0.0.1:8000/telecharger-pdf/'` est protégée par `@staff_member_required` : seul un compte admin Django connecté peut y accéder.
-
+- Ne jamais versionner `data_emails/`.
+- `data_emails/cle_secrete.key` est nécessaire pour déchiffrer les emails.
+- Le PDF contient des données personnelles, gardez le dossier privé.
 
 ## Notes
 
-Ce projet est actuellement configuré comme une page d'attente pour la PyCon Côte d'Ivoire 2027, avec collecte sécurisée des emails des personnes intéressées avant l'ouverture officielle du site complet.
+Ce projet est conçu pour être une page d'attente simple et sécurisée, avec une collecte d'emails chiffrée et un rapport PDF final destiné au staff administratif.
