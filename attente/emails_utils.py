@@ -2,14 +2,16 @@
 Logique de collecte d'emails chiffrés — à importer dans les vues Django.
 Dépendances : pip install cryptography reportlab
 """
+
 import hashlib
 import logging
 import re
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
+
 from django.conf import settings
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMessage, EmailMultiAlternatives
 from cryptography.fernet import Fernet, InvalidToken
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
@@ -34,10 +36,14 @@ FICHIER_MARQUEUR_ENVOI = DOSSIER / "dernier_envoi.marqueur"  # évite les envois
 DATE_CIBLE = datetime(2026, 8, 31, 23, 59, 59)
 
 # Adresse qui recevra le PDF final par email
-EMAIL_DESTINATAIRE = "diarrassoubamohamedaliou@gmail.com"
+EMAIL_DESTINATAIRE = "newsletters@pythonci.org"
 
-REGEX_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+# URL du site, utilisée dans le lien de l'email de confirmation
+URL_SITE = "https://ton-site-pycon.ci"
 
+REGEX_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+\Z")
+
+logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -75,6 +81,62 @@ def email_deja_present(email: str) -> bool:
     return empreinte in FICHIER_HASHES.read_text(encoding="utf-8").splitlines()
 
 
+def envoyer_confirmation_utilisateur(email: str) -> bool:
+    """
+    Envoie un email de confirmation automatique à la personne qui vient
+    de s'inscrire. Version HTML + texte brut (meilleure délivrabilité
+    qu'un email 100% texte brut). Renvoie True si l'envoi a réussi,
+    False sinon (sans jamais faire planter le reste du site en cas
+    d'échec).
+    """
+    sujet = "PyCon Côte d'Ivoire 2027 — Inscription confirmée"
+
+    texte_brut = (
+        "Merci pour ton inscription à la liste d'attente de la "
+        "PyCon Côte d'Ivoire 2027 !\n\n"
+        "Tu seras informé(e) dès l'ouverture officielle du site.\n\n"
+        "En attendant, n'hésite pas à nous suivre sur nos différents "
+        "canaux pour ne manquer aucune information.\n\n"
+        f"{URL_SITE}\n\n"
+        "À très vite,\nL'équipe PythonCI"
+    )
+
+    html = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.5;">
+        <h2 style="color: #1a1a1a;">PyCon Côte d'Ivoire 2027</h2>
+        <p>Merci pour ton inscription à la liste d'attente !</p>
+        <p>Tu seras informé(e) dès l'ouverture officielle du site.</p>
+        <p>En attendant, n'hésite pas à nous suivre pour ne manquer
+           aucune information.</p>
+        <p><a href="{URL_SITE}" style="color: #2563eb;">{URL_SITE}</a></p>
+        <p>À très vite,<br>L'équipe PythonCI</p>
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;">
+        <p style="font-size: 12px; color: #888;">
+          Tu reçois cet email car tu t'es inscrit(e) sur la liste
+          d'attente PyCon Côte d'Ivoire 2027 sur
+          <a href="{URL_SITE}" style="color: #888;">{URL_SITE}</a>.
+        </p>
+      </body>
+    </html>
+    """
+
+    try:
+        message = EmailMultiAlternatives(
+            subject=sujet,
+            body=texte_brut,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[email],
+        )
+        message.attach_alternative(html, "text/html")
+        message.send(fail_silently=False)
+        logger.info("Email de confirmation envoyé à %s...", email[:3])
+        return True
+    except Exception as e:
+        logger.error("Échec de l'envoi de la confirmation à %s... : %s", email[:3], e)
+        return False
+
+
 def ajouter_email(email: str) -> bool:
     """Renvoie True si ajouté, False si doublon, lève ValueError si invalide."""
     email = valider_email(email)
@@ -93,6 +155,7 @@ def ajouter_email(email: str) -> bool:
         f.write(empreinte + "\n")
 
     logger.info("Email collecté et chiffré (%s...)", token[:20])
+    envoyer_confirmation_utilisateur(email)
     return True
 
 
