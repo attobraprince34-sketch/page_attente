@@ -11,6 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from django.conf import settings
+from django.core.mail import EmailMessage, EmailMultiAlternatives
 from cryptography.fernet import Fernet, InvalidToken
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
@@ -29,12 +30,20 @@ FICHIER_CLE = DOSSIER / "cle_secrete.key"
 FICHIER_EMAILS = DOSSIER / "emails_chiffres.txt"
 FICHIER_HASHES = DOSSIER / "emails_hashes.txt"
 FICHIER_PDF = DOSSIER / "emails_finaux.pdf"
+FICHIER_MARQUEUR_ENVOI = DOSSIER / "dernier_envoi.marqueur"  # évite les envois en double
 
 # Doit correspondre à la date affichée dans la vue (date_fin_iso)
 DATE_CIBLE = datetime(2026, 8, 31, 23, 59, 59)
 
-REGEX_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+# Adresse qui recevra le PDF final par email
+EMAIL_DESTINATAIRE = "newsletters@pythonci.org"
 
+# URL du site, utilisée dans le lien de l'email de confirmation
+URL_SITE = "https://ton-site-pycon.ci"
+
+REGEX_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+\Z")
+
+logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -72,6 +81,62 @@ def email_deja_present(email: str) -> bool:
     return empreinte in FICHIER_HASHES.read_text(encoding="utf-8").splitlines()
 
 
+def envoyer_confirmation_utilisateur(email: str) -> bool:
+    """
+    Envoie un email de confirmation automatique à la personne qui vient
+    de s'inscrire. Version HTML + texte brut (meilleure délivrabilité
+    qu'un email 100% texte brut). Renvoie True si l'envoi a réussi,
+    False sinon (sans jamais faire planter le reste du site en cas
+    d'échec).
+    """
+    sujet = "PyCon Côte d'Ivoire 2027 — Inscription confirmée"
+
+    texte_brut = (
+        "Merci pour ton inscription à la liste d'attente de la "
+        "PyCon Côte d'Ivoire 2027 !\n\n"
+        "Tu seras informé(e) dès l'ouverture officielle du site.\n\n"
+        "En attendant, n'hésite pas à nous suivre sur nos différents "
+        "canaux pour ne manquer aucune information.\n\n"
+        f"{URL_SITE}\n\n"
+        "À très vite,\nL'équipe PythonCI"
+    )
+
+    html = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.5;">
+        <h2 style="color: #1a1a1a;">PyCon Côte d'Ivoire 2027</h2>
+        <p>Merci pour ton inscription à la liste d'attente !</p>
+        <p>Tu seras informé(e) dès l'ouverture officielle du site.</p>
+        <p>En attendant, n'hésite pas à nous suivre pour ne manquer
+           aucune information.</p>
+        <p><a href="{URL_SITE}" style="color: #2563eb;">{URL_SITE}</a></p>
+        <p>À très vite,<br>L'équipe PythonCI</p>
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;">
+        <p style="font-size: 12px; color: #888;">
+          Tu reçois cet email car tu t'es inscrit(e) sur la liste
+          d'attente PyCon Côte d'Ivoire 2027 sur
+          <a href="{URL_SITE}" style="color: #888;">{URL_SITE}</a>.
+        </p>
+      </body>
+    </html>
+    """
+
+    try:
+        message = EmailMultiAlternatives(
+            subject=sujet,
+            body=texte_brut,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[email],
+        )
+        message.attach_alternative(html, "text/html")
+        message.send(fail_silently=False)
+        logger.info("Email de confirmation envoyé à %s...", email[:3])
+        return True
+    except Exception as e:
+        logger.error("Échec de l'envoi de la confirmation à %s... : %s", email[:3], e)
+        return False
+
+
 def ajouter_email(email: str) -> bool:
     """Renvoie True si ajouté, False si doublon, lève ValueError si invalide."""
     email = valider_email(email)
@@ -90,6 +155,7 @@ def ajouter_email(email: str) -> bool:
         f.write(empreinte + "\n")
 
     logger.info("Email collecté et chiffré (%s...)", token[:20])
+    envoyer_confirmation_utilisateur(email)
     return True
 
 
@@ -126,13 +192,50 @@ def lire_emails_dechiffres() -> list[str]:
     return resultats
 
 
+def envoyer_pdf_par_email() -> bool:
+    """
+    Envoie le PDF final par email à EMAIL_DESTINATAIRE, en pièce jointe.
+    Renvoie True si l'envoi a réussi, False sinon.
+    """
+    if not FICHIER_PDF.exists():
+        logger.warning("Envoi impossible : le PDF n'existe pas encore.")
+        return False
+
+    try:
+        message = EmailMessage(
+            subject="PyCon Côte d'Ivoire 2027 — Liste finale des emails collectés",
+            body="Le compte à rebours est terminé. Vous trouverez en pièce jointe la liste des emails collectés.",
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[EMAIL_DESTINATAIRE],
+        )
+        message.attach_file(str(FICHIER_PDF))
+        message.send(fail_silently=False)
+        logger.info("PDF envoyé par email à %s", EMAIL_DESTINATAIRE)
+        return True
+    except Exception as e:
+        logger.error("Échec de l'envoi du PDF par email : %s", e)
+        return False
+
+
 def generer_pdf() -> None:
-    """Régénère le PDF à partir de l'état actuel des emails collectés.
-    Écrase le PDF précédent s'il existe déjà (pour inclure les nouveaux
-    emails ajoutés depuis la dernière génération)."""
+    """Régénère le PDF à partir de l'état actuel des emails collectés, puis
+    l'envoie automatiquement par email — mais une seule fois par nombre
+    d'emails collecté (pas de renvoi si rien n'a changé depuis le dernier
+    envoi)."""
     emails = lire_emails_dechiffres()
     if not emails:
         logger.info("Aucun email collecté, rien à générer.")
+        return
+
+    # Évite de renvoyer le même email en boucle à chaque visite de page :
+    # on ne régénère + renvoie que si le nombre d'emails a changé depuis
+    # le dernier envoi réussi.
+    dernier_total_envoye = None
+    if FICHIER_MARQUEUR_ENVOI.exists():
+        dernier_total_envoye = FICHIER_MARQUEUR_ENVOI.read_text(encoding="utf-8").strip()
+
+    if dernier_total_envoye == str(len(emails)):
+        logger.info("PDF déjà à jour et déjà envoyé (%d emails), rien à refaire.", len(emails))
         return
 
     doc = SimpleDocTemplate(str(FICHIER_PDF), pagesize=A4)
@@ -150,3 +253,6 @@ def generer_pdf() -> None:
 
     doc.build(contenu)
     logger.info("PDF généré : %s (%d emails)", FICHIER_PDF, len(emails))
+
+    if envoyer_pdf_par_email():
+        FICHIER_MARQUEUR_ENVOI.write_text(str(len(emails)), encoding="utf-8")

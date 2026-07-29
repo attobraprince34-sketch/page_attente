@@ -11,6 +11,15 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import truststore
+truststore.inject_into_ssl()
+
+import os
+import certifi
+os.environ["SSL_CERT_FILE"] = certifi.where()
+
+from dotenv import load_dotenv
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -118,7 +127,21 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATICFILES_DIRS =[
-     BASE_DIR / 'static',
+    BASE_DIR / 'static',
     ]
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
+# --------------------------------------------------------------------------
+# Configuration email (envoi du PDF final via Gmail SMTP)
+# --------------------------------------------------------------------------
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "md01438743@gmail.com"
+EMAIL_HOST_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+
+SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
