@@ -210,6 +210,7 @@ page_attente/
 
 <<<<<<< HEAD
 1. Chaque email soumis via le formulaire est validé (format), puis vérifié pour éviter les doublons (comparaison de hash SHA-256, sans jamais déchiffrer les emails existants).
+2. un mail de confirmation est ensuite envoyer a l'email soumis 
 2. L'email est ensuite chiffré (chiffrement symétrique réversible) avant d'être écrit dans `emails_chiffres.txt`. Le fichier texte ne contient donc jamais d'email lisible.
 3. La clé de chiffrement (`cle_secrete.key`) est générée automatiquement au premier email collecté, et réutilisée ensuite. **Sans cette clé, les emails sont définitivement illisibles.**
 4. Une fois la date cible du compte à rebours atteinte (`DATE_CIBLE` dans `emails_utils.py`), le PDF final est généré à partir des emails déchiffrés, puis **envoyé automatiquement par email** à `EMAIL_DESTINATAIRE`.
@@ -219,6 +220,7 @@ page_attente/
 2. Le backend valide le format et normalise l'email.
 3. Le hash SHA-256 est généré et comparé aux hashes existants.
 4. Si l'email est nouveau, il est chiffré et sauvegardé.
+5. un mail de confirmation est envoyer a l'email de l'utilisateur
 5. Les hash sont stockés pour empêcher les doublons.
 6. Lorsque la date cible est dépassée, le PDF peut être régénéré avec tous les emails collectés.
 
