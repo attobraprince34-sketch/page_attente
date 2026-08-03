@@ -39,7 +39,7 @@ DATE_CIBLE = datetime(2026, 8, 31, 23, 59, 59)
 EMAIL_DESTINATAIRE = "newsletters@pythonci.org"
 
 # URL du site, utilisée dans le lien de l'email de confirmation
-URL_SITE = "https://ton-site-pycon.ci" #a changé
+URL_SITE = "https://www.linkedin.com/company/pythonci/" #a changé
 
 REGEX_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+\Z")
 
