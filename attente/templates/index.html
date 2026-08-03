@@ -79,10 +79,10 @@
     background-size: 48px 48px;
     display:flex;
     flex-direction:column;
-    padding-top: 104px; /* compense le header désormais fixe */
+    padding-top: 88px; /* compense le header désormais fixe */
   }
   @media (max-width:640px){
-    body{ padding-top: 80px; }
+    body{ padding-top: 72px; }
   }
 
   .font-display{ font-family:'Sora', sans-serif; }
@@ -94,21 +94,30 @@
     left: 0;
     right: 0;
     width: 100%;
+    height: 88px;
     z-index: 50;
     border-bottom: 1px solid rgba(18,17,15,0.08);
     background: rgba(255,251,245,0.85);
     backdrop-filter: blur(6px);
+    display:flex;
+    align-items:center;
+    overflow: visible;
+    box-sizing: border-box;
+  }
+  @media (max-width:640px){
+    .site-header{ height: 72px; }
   }
   .site-logo{
-    height:88px;
-    width:88px;
+    display:block;
+    height:150px;
+    width:150px;
     object-fit:contain;
     border-radius:14px;
   }
   @media (max-width:640px){
     .site-logo{
-      height:64px;
-      width:64px;
+      height:110px;
+      width:110px;
     }
   }
 
@@ -430,12 +439,8 @@
 
   <!-- HEADER -->
   <header class="site-header w-full">
-    <div class="max-w-5xl mx-auto flex items-center justify-between px-3 ">
-      <div class="flex items-center gap-3">
-        <img src="{% static 'images/logo.png' %}" alt="PyCon Côte d'Ivoire 2027" class="site-logo">
-        <span class="font-display font-bold text-lg sm:text-xl tracking-tight">PyCon <span style="color:var(--ci-orange)">CI</span> 2027</span>
-      </div>
-     
+    <div class="px-3 ">
+        <img src="{% static 'images/log.png' %}" alt="PyCon Côte d'Ivoire 2027" class="site-logo">
     </div>
   </header>
 
